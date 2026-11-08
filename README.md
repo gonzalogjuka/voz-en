@@ -26,6 +26,19 @@ Chrome/Edge → `chrome://extensions` → Modo desarrollador → "Cargar descomp
 2. Clic en el ícono de la extensión → "Empezar". La primera vez descarga ~330 MB (voz con GPU) o ~90 MB (CPU) y el traductor; queda en caché.
 3. En la reunión elegí el micrófono por defecto (la extensión lo reemplaza internamente).
 
+## Compatibilidad
+
+| Navegador | Estado |
+|---|---|
+| Edge 156 | Probado |
+| Chrome 113+ | Debería andar, sin probar |
+| Brave | Probablemente no (bloquea el reconocimiento de voz de Google) |
+| Opera, Vivaldi | Dudoso, sin probar |
+| Firefox, Safari | No (sin `SpeechRecognition`; Firefox tampoco admite `background.service_worker`) |
+| Celulares, apps de escritorio de Zoom/Teams | No |
+
+Estado, qué falta verificar y próximos pasos: [`docs/HANDOFF.md`](docs/HANDOFF.md).
+
 ## Límites conocidos
 
 - El reconocimiento de voz de Chrome/Edge usa el servicio de voz del navegador (audio a Google/Microsoft); es gratis pero no es 100 % local.
