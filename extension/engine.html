@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Voz EN</title>
+<style>
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+  body { margin: 0; padding: 14px; background: #14161a; color: #e8eaed; font-size: 14px; }
+  h1 { font-size: 16px; margin: 0 0 10px; }
+  button { font: inherit; padding: 9px 16px; border-radius: 8px; border: 0; cursor: pointer; background: #2f6feb; color: #fff; }
+  button.stop { background: #c93c3c; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+  select, input[type=range] { font: inherit; }
+  .status { font-size: 12px; line-height: 1.7; color: #9aa0a6; }
+  .status b { color: #e8eaed; font-weight: 600; }
+  .ok { color: #5fd18b; } .warn { color: #e6b450; }
+  #live { min-height: 38px; margin: 10px 0; padding: 8px 10px; background: #1d2026; border-radius: 8px; color: #9aa0a6; font-style: italic; }
+  #log { height: 300px; overflow-y: auto; background: #1d2026; border-radius: 8px; padding: 8px 10px; }
+  #log div { margin-bottom: 8px; }
+  #log .es { color: #9aa0a6; font-size: 12px; }
+  #log .en { color: #e8eaed; }
+</style>
+</head>
+<body>
+<h1>Voz EN · español → inglés en la reunión</h1>
+<div class="row">
+  <button id="toggle">Empezar</button>
+  <label>Voz <select id="voice">
+    <option value="am_michael">Hombre (Michael)</option>
+    <option value="am_adam">Hombre (Adam)</option>
+    <option value="bm_george">Hombre (George, UK)</option>
+    <option value="af_heart">Mujer (Heart)</option>
+    <option value="af_bella">Mujer (Bella)</option>
+    <option value="bf_emma">Mujer (Emma, UK)</option>
+  </select></label>
+</div>
+<div class="row">
+  <label>Velocidad <input id="speed" type="range" min="0.9" max="1.4" step="0.05" value="1.1"></label>
+  <label><input id="monitor" type="checkbox"> Oír el inglés yo también</label>
+</div>
+<div class="status" id="status"></div>
+<div id="live">…</div>
+<div id="log"></div>
+<script type="module" src="engine.js"></script>
+</body>
+</html>
