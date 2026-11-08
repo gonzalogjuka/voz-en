@@ -19,6 +19,16 @@
   #log { height: 300px; overflow-y: auto; background: #1d2026; border-radius: 8px; padding: 8px 10px; }
   #log div { margin-bottom: 8px; }
   #log .es { color: #9aa0a6; font-size: 12px; }
+  #dbg { margin-top: 12px; font-size: 12px; }
+  #dbg summary { cursor: pointer; font-weight: 600; margin-bottom: 6px; }
+  #dbg button { padding: 5px 10px; font-size: 12px; background: #3a3f48; }
+  #dbg-summary { color: #5fd18b; margin: 6px 0; line-height: 1.5; }
+  #dbg table { width: 100%; border-collapse: collapse; }
+  #dbg th, #dbg td { text-align: right; padding: 3px 5px; border-bottom: 1px solid #262a31; white-space: nowrap; }
+  #dbg th:first-child, #dbg td.t { text-align: left; white-space: normal; }
+  #dbg td.t span { color: #8ab4f8; }
+  #dbg-events { height: 140px; overflow: auto; background: #101216; border-radius: 8px; padding: 6px 8px; margin: 8px 0 0; font-size: 11px; color: #9aa0a6; }
+  .cfg label { display: flex; align-items: center; gap: 6px; }
   #log .en { color: #e8eaed; }
 </style>
 </head>
@@ -41,6 +51,18 @@
 </div>
 <div class="status" id="status"></div>
 <div id="live">…</div>
+<details id="dbg" open>
+  <summary>Debug (tiempos en ms)</summary>
+  <div class="row cfg">
+    <label>Pausa para cortar <input id="cfg-pause" type="range" min="150" max="1500" step="50"> <b id="cfg-pause-v"></b> ms</label>
+    <label>Máx. palabras <input id="cfg-maxwords" type="range" min="5" max="30" step="1"> <b id="cfg-maxwords-v"></b></label>
+    <label>Mín. palabras <input id="cfg-minwords" type="range" min="1" max="4" step="1"> <b id="cfg-minwords-v"></b></label>
+  </div>
+  <div class="row"><button id="dbg-copy">Copiar informe</button><button id="dbg-clear">Limpiar</button></div>
+  <div id="dbg-summary"></div>
+  <div id="dbg-table"></div>
+  <pre id="dbg-events"></pre>
+</details>
 <div id="log"></div>
 <script type="module" src="engine.js"></script>
 </body>

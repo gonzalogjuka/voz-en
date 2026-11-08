@@ -4,7 +4,7 @@ chrome.action.onClicked.addListener(async () => {
   const wins = await chrome.windows.getAll({ populate: true, windowTypes: ['popup'] });
   const open = wins.find((w) => w.tabs?.some((t) => t.url?.startsWith(ENGINE_URL)));
   if (open) return chrome.windows.update(open.id, { focused: true });
-  chrome.windows.create({ url: ENGINE_URL, type: 'popup', width: 460, height: 640 });
+  chrome.windows.create({ url: ENGINE_URL, type: 'popup', width: 600, height: 900 });
 });
 
 // tabId -> true while the meeting app holds our wrapped microphone.

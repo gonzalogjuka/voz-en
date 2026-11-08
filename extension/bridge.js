@@ -17,6 +17,9 @@ window.addEventListener('message', (ev) => {
   const m = ev.data;
   if (ev.source !== window || !m || !m[TAG]) return;
   if (m.type === 'active') chrome.runtime.sendMessage({ type: 'mic-active', active: m.active }).catch(() => {});
+  if (m.type === 'played' || m.type === 'dropped') {
+    chrome.runtime.sendMessage({ ...m, type: 'ack-' + m.type }).catch(() => {});
+  }
   if (m.type === 'ready') {
     lastMode = null;
     pushMode();
@@ -35,5 +38,5 @@ chrome.runtime.onMessage.addListener((msg) => {
   const i16 = new Int16Array(bytes.buffer);
   const pcm = new Float32Array(i16.length);
   for (let i = 0; i < i16.length; i++) pcm[i] = i16[i] / 32768;
-  post({ type: 'audio', pcm, rate: msg.rate }, [pcm.buffer]);
+  post({ type: 'audio', id: msg.id, pcm, rate: msg.rate }, [pcm.buffer]);
 });

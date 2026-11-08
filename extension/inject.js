@@ -62,8 +62,10 @@
     if (m.type === 'mode') {
       translate = !!m.translate;
       applyMode();
-    } else if (m.type === 'audio' && translate) {
+    } else if (m.type === 'audio') {
+      if (!translate) return post({ type: 'dropped', id: m.id });
       const pcm = m.pcm;
+      let lag = 0;
       for (const g of graphs) {
         if (g.ctx.state === 'suspended') g.ctx.resume().catch(() => {});
         const buf = g.ctx.createBuffer(1, pcm.length, m.rate);
@@ -74,7 +76,9 @@
         const at = Math.max(g.ctx.currentTime + 0.02, g.next);
         s.start(at);
         g.next = at + buf.duration;
+        lag = Math.max(lag, at - g.ctx.currentTime);
       }
+      post({ type: 'played', id: m.id, lag: Math.round(lag * 1000), dur: pcm.length / m.rate, graphs: graphs.size });
     }
   });
   post({ type: 'ready' });

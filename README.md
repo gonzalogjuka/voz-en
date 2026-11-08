@@ -32,3 +32,13 @@ Chrome/Edge → `chrome://extensions` → Modo desarrollador → "Cargar descomp
 - Latencia medida con GPU: ~1,3 s para una frase de 12 palabras (traducción + síntesis). Sin GPU (WASM) es más lenta.
 - Verificado con Edge 156 sobre una página real (whereby.com) y un micrófono real; Meet y Zoom no probados (Meet exige login).
 - El audio de la reunión se sigue oyendo normal; "Oír el inglés yo también" reproduce localmente lo que sale.
+
+## Debug en vivo
+
+La ventana del traductor trae un panel de debug (abierto por defecto):
+
+- **Tabla por frase**: `pausa` (última palabra → corte), `trad`, `cola`, `voz`, `enviado` (última palabra → audio enviado), `cola reunión` (espera en el micrófono virtual de la página) y `suena` (lo que realmente vive el otro lado).
+- **Resumen**: medianas de las últimas 30 frases, factor de tiempo real de la voz, frases fusionadas por atraso, frases descartadas por la reunión o sin confirmación de la página.
+- **Eventos**: texto parcial/final del reconocimiento, cortes y su motivo (`pausa`, `palabras`, `final`), reinicios y errores del reconocimiento.
+- **Perillas en vivo** (se guardan): pausa para cortar, máximo y mínimo de palabras.
+- **Copiar informe**: JSON completo (config, resumen, frases, eventos) para pegarlo y analizarlo.

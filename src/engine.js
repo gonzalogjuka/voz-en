@@ -10,8 +10,7 @@ const MEETING_URLS = [
   'https://teams.live.com/*', 'https://*.whereby.com/*',
 ];
 const RATE = 24000;
-const COMMIT_PAUSE_MS = 450;
-const COMMIT_MAX_WORDS = 14;
+import { cfg, ev, rec, ack, initDebug } from './debug.js';
 
 const state = { running: false, tts: null, translate: null, rec: null, beat: 0, monitorCtx: null, monitorNext: 0 };
 const st = { model: 'sin cargar', translator: 'sin cargar', mic: '', meeting: '' };
@@ -109,10 +108,10 @@ async function refreshTabs() {
   renderStatus();
 }
 
-function sendAudio(f32) {
+function sendAudio(f32, id) {
   const i16 = new Int16Array(f32.length);
   for (let i = 0; i < f32.length; i++) i16[i] = Math.max(-1, Math.min(1, f32[i])) * 32767;
-  const msg = { type: 'audio', b64: toBase64(i16), rate: RATE };
+  const msg = { type: 'audio', id, b64: toBase64(i16), rate: RATE };
   for (const id of meetingTabs) chrome.tabs.sendMessage(id, msg).catch(() => {});
   if ($('monitor').checked) {
     const c = (state.monitorCtx ||= new AudioContext());
@@ -132,11 +131,15 @@ const trQueue = [];
 const ttsQueue = [];
 let trBusy = false;
 let ttsBusy = false;
+let seq = 0;
 
-function enqueue(es) {
+function enqueue(es, { tLast, reason }) {
   es = es.trim();
   if (!es) return;
-  trQueue.push(es);
+  const id = ++seq;
+  rec(id, { es, tLast, tCommit: performance.now(), reason, trDepth: trQueue.length, ttsDepth: ttsQueue.length });
+  ev('corte', `#${id} (${reason}) ${es}`);
+  trQueue.push({ id, es });
   pumpTranslate();
 }
 
@@ -145,11 +148,13 @@ async function pumpTranslate() {
   trBusy = true;
   try {
     while (trQueue.length && state.running) {
-      const es = trQueue.shift();
+      const { id, es } = trQueue.shift();
+      rec(id, { tTr0: performance.now() });
       const en = (await state.translate(es)).trim();
+      rec(id, { tTr1: performance.now(), en });
       if (!en) continue;
       addLog(es, en);
-      ttsQueue.push(en);
+      ttsQueue.push({ id, en });
       pumpTTS();
     }
   } finally {
@@ -163,9 +168,17 @@ async function pumpTTS() {
   try {
     while (ttsQueue.length && state.running) {
       // Fell behind: speak the backlog as one utterance instead of queueing latency.
-      const text = ttsQueue.length > 2 ? ttsQueue.splice(0).join(' ') : ttsQueue.shift();
+      const items = ttsQueue.length > 2 ? ttsQueue.splice(0) : [ttsQueue.shift()];
+      const ids = items.map((x) => x.id);
+      const text = items.map((x) => x.en).join(' ');
+      if (ids.length > 1) ev('fusion', `#${ids.join(',#')}`);
+      const tTts0 = performance.now();
+      for (const id of ids) rec(id, { tTts0, group: ids });
       const audio = await state.tts.generate(text, { voice: $('voice').value, speed: +$('speed').value });
-      sendAudio(audio.audio);
+      const tTts1 = performance.now();
+      sendAudio(audio.audio, ids[0]);
+      const tSent = performance.now();
+      for (const id of ids) rec(id, { tTts1, tSent, dur: audio.audio.length / RATE });
     }
   } finally {
     ttsBusy = false;
@@ -194,12 +207,13 @@ function startRecognition() {
   rec.continuous = true;
   rec.interimResults = true;
   const committed = {};
+  const lastT = {}; // result index -> time the recognizer last extended its text
   let timer = null;
 
-  const commitRemainder = (i, text, final) => {
+  const commitRemainder = (i, text, reason) => {
     const rest = text.slice(committed[i] || 0);
-    if (rest.trim()) enqueue(rest);
-    committed[i] = final ? Infinity : text.length;
+    if (rest.trim()) enqueue(rest, { tLast: lastT[i] ?? performance.now(), reason });
+    committed[i] = reason === 'final' ? Infinity : text.length;
   };
 
   rec.onresult = (e) => {
@@ -209,33 +223,39 @@ function startRecognition() {
       const r = e.results[i];
       const text = r[0].transcript;
       if (committed[i] === Infinity) continue;
+      ev(r.isFinal ? 'final' : 'interim', text.slice(committed[i] || 0));
       if (r.isFinal) {
-        commitRemainder(i, text, true);
+        commitRemainder(i, text, 'final');
         continue;
       }
       const rest = text.slice(committed[i] || 0);
       live = rest;
-      if (rest.trim().split(/\s+/).length >= COMMIT_MAX_WORDS) {
-        commitRemainder(i, text, false);
-      } else if (rest.trim().split(/\s+/).length >= 2) {
-        timer = setTimeout(() => commitRemainder(i, text, false), COMMIT_PAUSE_MS);
+      const words = rest.trim() ? rest.trim().split(/\s+/).length : 0;
+      if (words) lastT[i] = performance.now();
+      if (words >= cfg.maxWords) {
+        commitRemainder(i, text, 'palabras');
+      } else if (words >= cfg.minWords) {
+        timer = setTimeout(() => commitRemainder(i, text, 'pausa'), cfg.pause);
       }
     }
     $('live').textContent = live || '…';
   };
   rec.onerror = (e) => {
+    ev('rec-err', e.error);
     if (e.error === 'no-speech' || e.error === 'aborted') return;
     st.mic = e.error === 'not-allowed' ? 'error: permiso de micrófono denegado' : `error: ${e.error}`;
     renderStatus();
   };
   rec.onend = () => {
     clearTimeout(timer);
+    ev('rec-end', state.running ? 'reiniciando' : '');
     if (state.running) {
       try { rec.start(); } catch {}
     }
   };
   rec.onstart = () => {
     st.mic = 'escuchando (es-AR)';
+    ev('rec-start');
     renderStatus();
   };
   rec.start();
@@ -253,6 +273,7 @@ $('toggle').onclick = async () => {
   const btn = $('toggle');
   if (state.running) {
     state.running = false;
+    ev('stop');
     state.rec?.stop();
     trQueue.length = ttsQueue.length = 0;
     await chrome.storage.local.set({ translate: false });
@@ -275,6 +296,7 @@ $('toggle').onclick = async () => {
     return;
   }
   state.running = true;
+  ev('start');
   if (!startRecognition()) {
     state.running = false;
     btn.disabled = false;
@@ -288,5 +310,15 @@ $('toggle').onclick = async () => {
 };
 
 chrome.storage.local.set({ translate: false });
+chrome.runtime.onMessage.addListener((m) => {
+  if (m.type === 'ack-played') {
+    ack(m.id, { lag: m.lag, acked: true });
+    ev('suena', `#${m.id} entra a la cola de la reunión con ${m.lag} ms de espera, ${m.dur.toFixed(1)} s de audio`);
+  } else if (m.type === 'ack-dropped') {
+    ack(m.id, { dropped: true });
+    ev('DESCART', `#${m.id}: la reunión recibió audio con el modo apagado`);
+  }
+});
+initDebug(() => ({ voiceModel: st.model, translator: st.translator, meeting: st.meeting, voice: $('voice').value, speed: +$('speed').value }));
 renderStatus();
 refreshTabs();
